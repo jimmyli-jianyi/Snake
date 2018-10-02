@@ -1,7 +1,7 @@
 const SCALE = 20;
 const WIDTH = 30;
 const HEIGHT = 30;
-const SPEED = 150;
+const SPEED = 100;
 
 /** One-time setup: find HTML canvas element */
 
@@ -55,8 +55,8 @@ class Pellet {
 /** Snake */
 
 class Snake {
-  constructor(keymap, start, dir, color) {
-    this.color = color;
+  constructor(color, keymap, start, dir) {
+    this.color = color; // color for this snake
     this.keymap = keymap; // mapping of keys to directions
     this.parts = [start]; // list of x-y coordinates of parts
     this.dir = dir; // dir to move on next move
@@ -67,17 +67,14 @@ class Snake {
     for (const p of this.parts) p.draw(this.color);
   }
 
-  notAppearInside(pt) {
+  contains(pt) {
     return this.parts.some(me => me.x === pt.x && me.y === pt.y);
   }
 
-  contains(pt) {
-    let [a, ...rest] = this.parts;
-    return rest.some(me => me.x === pt.x && me.y === pt.y);
-  }
-
   crashIntoSelf() {
-    return this.contains(this.head());
+    const head = this.head();
+    const body = this.parts.slice(1);
+    return body.some(b => b.x === head.x && b.y === head.y);
   }
 
   crashIntoWall() {
@@ -103,17 +100,14 @@ class Snake {
   }
 
   changeDir(dir) {
-    if (
-      (this.dir === 'left' && dir !== 'right') ||
-      (this.dir === 'right' && dir !== 'left') ||
-      (this.dir === 'up' && dir !== 'down') ||
-      (this.dir === 'down' && dir !== 'up')
-    )
-      this.dir = dir;
+    if (dir === 'left' && this.dir !== 'right') this.dir = 'left';
+    else if (dir === 'right' && this.dir !== 'left') this.dir = 'right';
+    else if (dir === 'up' && this.dir !== 'down') this.dir = 'up';
+    else if (dir === 'down' && this.dir !== 'up') this.dir = 'down';
   }
 
   grow() {
-    this.growBy += 1;
+    this.growBy += 2;
   }
 
   truncate() {
@@ -130,28 +124,24 @@ class Snake {
 /** Overall game. */
 
 class Game {
-  constructor(snake) {
+  constructor(snakes) {
     this.snake = snake;
     this.food = [];
-    this.numFood = 3;
+    this.numFood = 6;
 
     this.interval = null;
-    this.keyListener = this.onkey;
+    this.keyListener = this.onkey.bind(this);
   }
 
   refillFood() {
     while (this.food.length < this.numFood) {
-      let newPellet = Pellet.newRandom();
-      if (!this.snake.notAppearInside(newPellet)) {
-        this.food.push(newPellet);
-      }
+      const candidate = Pellet.newRandom();
+      if (!this.snake.contains(candidate)) this.food.push(candidate);
     }
   }
 
   play() {
-    document.addEventListener('keydown', e => {
-      this.keyListener(e);
-    });
+    document.addEventListener('keydown', this.keyListener);
     this.interval = window.setInterval(this.tick.bind(this), SPEED);
   }
 
@@ -191,10 +181,10 @@ class Game {
 }
 
 const snake = new Snake(
+  'red',
   { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' },
   new Point(20, 20),
-  'right',
-  'cyan'
+  'right'
 );
 
 const game = new Game(snake);
